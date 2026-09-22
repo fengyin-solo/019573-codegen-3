@@ -7,7 +7,8 @@ class App {
         this.interactionManager = null;
         this.guideManager = null;
         this.quizManager = null;
-        
+        this.reportManager = null;
+
         this.init();
     }
     
@@ -39,7 +40,10 @@ class App {
         
         // 初始化测验管理器
         this.quizManager = new QuizManager(this.canvasManager);
-        
+
+        // 初始化成绩单管理器
+        this.reportManager = new ReportManager();
+
         // 初始化知识点提示
         this.initKnowledgeTips();
         
@@ -73,6 +77,14 @@ class App {
      * 初始化测验模式
      */
     initQuizMode() {
+        // 成绩单按钮
+        const btnReport = document.getElementById('btn-report');
+        if (btnReport) {
+            btnReport.addEventListener('click', () => {
+                this.reportManager.open();
+            });
+        }
+
         // 测验模式按钮
         const btnQuizMode = document.getElementById('btn-quiz-mode');
         if (btnQuizMode) {
@@ -124,6 +136,25 @@ class App {
         window.addEventListener('quizStopped', () => {
             this.hideQuizPanel();
         });
+
+        // 错题/跳过题全部做完：自动结束本轮并打开成绩单
+        window.addEventListener('quizPoolEmpty', () => {
+            Utils.showToast('错题全部做完啦，来看看成绩单', 'success');
+            const round = this.stopQuizMode();
+            if (round) this.reportManager.open();
+        });
+
+        // 成绩单空态：去做一轮测验
+        window.addEventListener('requestStartQuiz', () => {
+            if (!this.quizManager.isQuizMode) {
+                this.startQuizMode();
+            }
+        });
+
+        // 成绩单：错题重做
+        window.addEventListener('requestRedo', (e) => {
+            this.startRedo(e.detail.questionIds);
+        });
     }
     
     /**
@@ -143,73 +174,99 @@ class App {
     startQuizMode() {
         // 清空画布
         this.canvasManager.clear();
-        
+
         // 启动测验
         this.quizManager.startQuizMode();
-        
-        // 更新UI
+
+        this.enterQuizUI('normal');
+        Utils.showToast('测验模式已开启，祝你好运！', 'success');
+    }
+
+    /**
+     * 错题重做
+     */
+    startRedo(questionIds) {
+        // 若正在测验中，先静默结束当前轮次，避免一轮记录悬空
+        if (this.quizManager.isQuizMode) {
+            this.teardownQuizUI();
+            this.quizManager.stopQuizMode();
+        }
+
+        this.canvasManager.clear();
+
+        const started = this.quizManager.startRedoMode(questionIds);
+        if (!started) {
+            Utils.showToast('没有可重做的题目', 'warning');
+            return;
+        }
+
+        this.enterQuizUI('redo');
+        Utils.showToast(`错题重做开始，共 ${questionIds.length} 题`, 'success');
+    }
+
+    /**
+     * 进入测验态的界面更新
+     */
+    enterQuizUI(mode) {
         const btnQuizMode = document.getElementById('btn-quiz-mode');
         if (btnQuizMode) {
             btnQuizMode.classList.add('active');
             btnQuizMode.querySelector('span').textContent = '退出测验';
         }
-        
-        // 显示测验面板
+
         const quizPanel = document.getElementById('quiz-panel');
-        if (quizPanel) {
-            quizPanel.classList.remove('hidden');
+        if (quizPanel) quizPanel.classList.remove('hidden');
+
+        const badge = document.getElementById('quiz-badge');
+        if (badge) {
+            badge.textContent = mode === 'redo' ? '🔁 错题重做' : '📝 光学测验';
         }
-        
-        // 添加测验模式类
+
         const appContainer = document.getElementById('app');
-        if (appContainer) {
-            appContainer.classList.add('quiz-mode');
-        }
-        
-        Utils.showToast('测验模式已开启，祝你好运！', 'success');
+        if (appContainer) appContainer.classList.add('quiz-mode');
     }
-    
+
     /**
-     * 停止测验模式
+     * 退出测验态的界面还原（不碰数据）
      */
-    stopQuizMode() {
-        if (!this.quizManager.isQuizMode) return;
-        
-        const score = this.quizManager.getScore();
-        this.quizManager.stopQuizMode();
-        
-        // 更新UI
+    teardownQuizUI() {
         const btnQuizMode = document.getElementById('btn-quiz-mode');
         if (btnQuizMode) {
             btnQuizMode.classList.remove('active');
             btnQuizMode.querySelector('span').textContent = '测验模式';
         }
-        
-        // 隐藏测验面板
+
         const quizPanel = document.getElementById('quiz-panel');
-        if (quizPanel) {
-            quizPanel.classList.add('hidden');
-        }
-        
-        // 移除测验模式类
+        if (quizPanel) quizPanel.classList.add('hidden');
+
         const appContainer = document.getElementById('app');
-        if (appContainer) {
-            appContainer.classList.remove('quiz-mode');
-        }
-        
-        // 隐藏结果模态框
+        if (appContainer) appContainer.classList.remove('quiz-mode');
+
         const resultModal = document.getElementById('quiz-result-modal');
-        if (resultModal) {
-            resultModal.classList.add('hidden');
-        }
-        
+        if (resultModal) resultModal.classList.add('hidden');
+    }
+
+    /**
+     * 停止测验模式
+     * @returns {Object|null} 本轮测验汇总
+     */
+    stopQuizMode() {
+        if (!this.quizManager.isQuizMode) return null;
+
+        const score = this.quizManager.getScore();
+        const round = this.quizManager.stopQuizMode();
+
+        this.teardownQuizUI();
+
         // 清空画布
         this.canvasManager.clear();
-        
+
         Utils.showToast(
             `测验结束！得分：${score.score}分，正确率：${score.accuracy}%`,
             score.accuracy >= 60 ? 'success' : 'warning'
         );
+
+        return round;
     }
     
     /**
@@ -383,29 +440,22 @@ class App {
      */
     skipQuizQuestion() {
         if (!this.quizManager.isQuizMode) return;
-        
-        // 记录跳过（不扣分，但计入总题数）
-        this.quizManager.totalQuestions++;
-        this.quizManager.questionHistory.push({
-            questionId: this.quizManager.currentQuestion.id,
-            title: this.quizManager.currentQuestion.title,
-            isCorrect: false,
-            score: 0,
-            hintUsed: false,
-            skipped: true,
-            timestamp: Date.now()
-        });
-        
+
+        // 记录跳过（不扣分，单独统计）
+        this.quizManager.skipQuestion();
+
         // 更新得分显示
         this.updateScoreDisplay();
-        
-        // 下一题
-        this.quizManager.nextQuestion();
-        
+
+        // 下一题（错题重做模式下可能已无题可做）
+        const next = this.quizManager.nextQuestion();
+
         // 清空画布
         this.canvasManager.clear();
-        
-        Utils.showToast('已跳过本题', 'info');
+
+        if (next) {
+            Utils.showToast('已跳过本题', 'info');
+        }
     }
     
     /**

@@ -9,7 +9,9 @@ const CONFIG = {
     STORAGE_KEYS: {
         DESIGNS: 'optics_designs',
         SETTINGS: 'optics_settings',
-        GUIDE_COMPLETED: 'optics_guide_completed'
+        GUIDE_COMPLETED: 'optics_guide_completed',
+        QUIZ_HISTORY: 'optics_quiz_history',
+        QUIZ_ROUNDS: 'optics_quiz_rounds'
     },
     
     // 透镜类型
@@ -124,6 +126,7 @@ const CONFIG = {
         {
             id: 'focus_convex',
             title: '平行光聚焦实验',
+            topic: '凸透镜成像',
             description: '请选择合适的透镜和参数，使平行光能够精准会聚到一点。',
             requirements: {
                 lensType: 'convex',
@@ -151,6 +154,7 @@ const CONFIG = {
         {
             id: 'diverge_concave',
             title: '光线发散实验',
+            topic: '凹透镜成像',
             description: '请选择合适的透镜，使平行光通过后向外发散开来。',
             requirements: {
                 lensType: 'concave',
@@ -176,6 +180,7 @@ const CONFIG = {
         {
             id: 'no_deflection_plano',
             title: '光线直线传播实验',
+            topic: '光的直线传播',
             description: '请选择合适的透镜，使光线通过后方向不发生改变。',
             requirements: {
                 lensType: 'plano'
@@ -198,6 +203,7 @@ const CONFIG = {
         {
             id: 'myopia_correction',
             title: '近视眼矫正',
+            topic: '视力矫正',
             description: '近视眼的晶状体太厚，折光能力太强，成像在视网膜前方。请选择合适的透镜来矫正近视。',
             requirements: {
                 lensType: 'concave',
@@ -222,6 +228,7 @@ const CONFIG = {
         {
             id: 'hyperopia_correction',
             title: '远视眼矫正',
+            topic: '视力矫正',
             description: '远视眼的晶状体太薄，折光能力太弱，成像在视网膜后方。请选择合适的透镜来矫正远视。',
             requirements: {
                 lensType: 'convex',
@@ -246,6 +253,7 @@ const CONFIG = {
         {
             id: 'magnifier',
             title: '制作放大镜',
+            topic: '凸透镜成像',
             description: '放大镜是一种常用的光学仪器，请选择合适的透镜和参数，制作一个聚光能力较强的放大镜。',
             requirements: {
                 lensType: 'convex',
@@ -273,6 +281,7 @@ const CONFIG = {
         {
             id: 'dispersion_demo',
             title: '色散现象演示',
+            topic: '光的色散',
             description: '白光通过透镜时会发生色散，不同颜色的光偏折程度不同。请选择合适的材料和参数，观察明显的色散现象。',
             requirements: {
                 lensType: 'convex',
@@ -302,6 +311,7 @@ const CONFIG = {
         {
             id: 'low_dispersion_lens',
             title: '低色散镜头设计',
+            topic: '光的色散',
             description: '在摄影中，色散会产生彩色边缘，影响画质。请选择合适的材料设计一个低色散镜头。',
             requirements: {
                 lensType: 'convex',
@@ -327,6 +337,7 @@ const CONFIG = {
         {
             id: 'spherical_aberration',
             title: '球差现象观察',
+            topic: '透镜像差',
             description: '球面透镜的边缘光线和中心光线会聚点不同，这就是球差。请观察球面透镜的球差现象。',
             requirements: {
                 lensType: 'convex',
@@ -356,6 +367,7 @@ const CONFIG = {
         {
             id: 'aspheric_correction',
             title: '非球面透镜消球差',
+            topic: '透镜像差',
             description: '非球面透镜可以消除球差，让所有光线精准会聚。请对比观察非球面透镜和球面透镜的区别。',
             requirements: {
                 lensType: 'aspheric',

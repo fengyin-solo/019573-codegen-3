@@ -19,8 +19,16 @@ class QuizManager {
         this.hintUsed = false;
         this.isQuizMode = false;
         this.answeredQuestions = new Set();
+
+        // 当前测验轮次
+        this.roundId = null;
+        this.roundStartedAt = null;
+        // 测验模式：normal（完整题库） / redo（错题重做）
+        this.roundMode = 'normal';
+        // 错题重做时的题目池
+        this.redoQuestionIds = null;
     }
-    
+
     /**
      * 开启测验模式
      */
@@ -28,18 +36,95 @@ class QuizManager {
         this.isQuizMode = true;
         this.score = 0;
         this.totalQuestions = 0;
+        this.questionHistory = [];
         this.answeredQuestions.clear();
+        this.roundMode = 'normal';
+        this.redoQuestionIds = null;
+
+        this.startRound();
         this.nextQuestion();
     }
-    
+
+    /**
+     * 开启错题重做模式
+     * @param {string[]} questionIds 待重做的题目ID列表
+     */
+    startRedoMode(questionIds) {
+        if (!questionIds || questionIds.length === 0) return false;
+
+        this.isQuizMode = true;
+        this.score = 0;
+        this.totalQuestions = 0;
+        this.questionHistory = [];
+        this.answeredQuestions.clear();
+        this.roundMode = 'redo';
+        this.redoQuestionIds = questionIds.slice();
+
+        this.startRound();
+        this.nextQuestion();
+        return true;
+    }
+
+    /**
+     * 创建一轮新的测验记录
+     */
+    startRound() {
+        this.roundId = Utils.generateId();
+        this.roundStartedAt = Date.now();
+
+        Storage.addQuizRound({
+            id: this.roundId,
+            startedAt: this.roundStartedAt,
+            endedAt: null,
+            mode: this.roundMode,
+            total: 0,
+            correct: 0,
+            wrong: 0,
+            skipped: 0,
+            score: 0
+        });
+    }
+
+    /**
+     * 结束当前轮次并回填统计
+     */
+    finishRound() {
+        if (!this.roundId) return null;
+
+        const records = this.questionHistory;
+        const summary = {
+            endedAt: Date.now(),
+            total: records.length,
+            correct: records.filter(r => r.status === 'correct').length,
+            wrong: records.filter(r => r.status === 'wrong').length,
+            skipped: records.filter(r => r.status === 'skipped').length,
+            score: this.score
+        };
+
+        const round = Storage.updateQuizRound(this.roundId, summary);
+        this.roundId = null;
+        this.roundStartedAt = null;
+        return Object.assign({}, round, summary);
+    }
+
     /**
      * 关闭测验模式
+     * @returns {Object|null} 本轮测验的汇总信息
      */
     stopQuizMode() {
+        let round = null;
+        if (this.isQuizMode) {
+            round = this.finishRound();
+        }
         this.isQuizMode = false;
         this.currentQuestion = null;
         this.hintUsed = false;
-        window.dispatchEvent(new CustomEvent('quizStopped'));
+        this.roundMode = 'normal';
+        this.redoQuestionIds = null;
+        window.dispatchEvent(new CustomEvent('quizStopped', {
+            detail: { round: round }
+        }));
+        return round;
     }
     
     /**
@@ -47,23 +132,39 @@ class QuizManager {
      */
     nextQuestion() {
         const questions = CONFIG.QUIZ_QUESTIONS;
-        let availableQuestions = questions.filter(q => !this.answeredQuestions.has(q.id));
-        
-        if (availableQuestions.length === 0) {
-            this.answeredQuestions.clear();
-            availableQuestions = questions;
+        let pool;
+
+        if (this.roundMode === 'redo' && this.redoQuestionIds) {
+            // 错题重做：只从待重做题池中取题，做完即止
+            pool = questions.filter(q =>
+                this.redoQuestionIds.includes(q.id) &&
+                !this.answeredQuestions.has(q.id)
+            );
+
+            if (pool.length === 0) {
+                this.currentQuestion = null;
+                window.dispatchEvent(new CustomEvent('quizPoolEmpty'));
+                return null;
+            }
+        } else {
+            pool = questions.filter(q => !this.answeredQuestions.has(q.id));
+
+            if (pool.length === 0) {
+                this.answeredQuestions.clear();
+                pool = questions;
+            }
         }
-        
-        const randomIndex = Math.floor(Math.random() * availableQuestions.length);
-        this.currentQuestion = availableQuestions[randomIndex];
+
+        const randomIndex = Math.floor(Math.random() * pool.length);
+        this.currentQuestion = pool[randomIndex];
         this.hintUsed = false;
-        
+
         this.answeredQuestions.add(this.currentQuestion.id);
-        
+
         window.dispatchEvent(new CustomEvent('questionChanged', {
             detail: this.currentQuestion
         }));
-        
+
         return this.currentQuestion;
     }
     
@@ -308,18 +409,20 @@ class QuizManager {
             this.score += earnedScore;
         }
         this.totalQuestions++;
-        
+
         const explanation = question.explanation[explanationKey] || question.explanation.correct;
-        
-        this.questionHistory.push({
-            questionId: question.id,
-            title: question.title,
-            isCorrect: isCorrect,
+
+        const record = this.buildRecord({
+            question,
+            status: isCorrect ? 'correct' : 'wrong',
             score: earnedScore,
             hintUsed: this.hintUsed,
-            timestamp: Date.now()
+            explanation,
+            details: results
         });
-        
+        this.questionHistory.push(record);
+        Storage.addQuizRecord(record);
+
         return {
             isCorrect: isCorrect,
             score: earnedScore,
@@ -328,6 +431,74 @@ class QuizManager {
             explanation: explanation,
             details: results,
             hintUsed: this.hintUsed
+        };
+    }
+
+    /**
+     * 跳过当前题目（不扣分，跳过单独统计）
+     * @returns {Object|null} 生成的历史记录
+     */
+    skipQuestion() {
+        if (!this.isQuizMode || !this.currentQuestion) return null;
+
+        const question = this.currentQuestion;
+        this.totalQuestions++;
+
+        const record = this.buildRecord({
+            question,
+            status: 'skipped',
+            score: 0,
+            hintUsed: this.hintUsed,
+            explanation: question.explanation.correct,
+            details: []
+        });
+        this.questionHistory.push(record);
+        Storage.addQuizRecord(record);
+
+        return record;
+    }
+
+    /**
+     * 构建一条完整的答题历史记录（含当时参数与正确思路）
+     */
+    buildRecord({ question, status, score, hintUsed, explanation, details }) {
+        const lenses = this.canvasManager.lenses || [];
+        const userLens = lenses[0];
+        const userSolution = userLens ? {
+            lensType: userLens.type,
+            lensTypeName: userLens.getTypeName(),
+            material: userLens.material,
+            materialName: userLens.getMaterialName(),
+            refractiveIndex: Number(userLens.refractiveIndex.toFixed(2)),
+            curvature: userLens.curvature,
+            size: userLens.size,
+            focalLength: Number.isFinite(userLens.getFocalLength())
+                ? Math.round(userLens.getFocalLength())
+                : null,
+            lightMode: this.renderer.lightMode
+        } : null;
+
+        return {
+            id: Utils.generateId(),
+            roundId: this.roundId,
+            roundMode: this.roundMode,
+            questionId: question.id,
+            title: question.title,
+            topic: question.topic || '综合',
+            description: question.description,
+            status: status,
+            isCorrect: status === 'correct',
+            skipped: status === 'skipped',
+            score: score,
+            hintUsed: hintUsed,
+            timestamp: Date.now(),
+            userSolution: userSolution,
+            userDetails: details,
+            // 正确思路：题目要求 + 正确解释 + 提示
+            requirements: Utils.deepClone(question.requirements || {}),
+            correctExplanation: question.explanation.correct,
+            receivedExplanation: explanation,
+            hints: question.hints || []
         };
     }
     
@@ -472,14 +643,18 @@ class QuizManager {
     }
     
     /**
-     * 获取当前得分
+     * 获取当前得分（正确率不把跳过的题计入分母）
      */
     getScore() {
+        const answered = this.questionHistory.filter(q => !q.skipped && q.status !== 'skipped');
+        const correctCount = answered.filter(q => q.isCorrect).length;
         return {
             score: this.score,
             totalQuestions: this.totalQuestions,
-            accuracy: this.totalQuestions > 0 
-                ? Math.round((this.questionHistory.filter(q => q.isCorrect).length / this.totalQuestions) * 100)
+            answeredCount: answered.length,
+            skippedCount: this.questionHistory.filter(q => q.skipped || q.status === 'skipped').length,
+            accuracy: answered.length > 0
+                ? Math.round((correctCount / answered.length) * 100)
                 : 0
         };
     }
