@@ -103,6 +103,82 @@
         </div>
     </div>
 
+    <!-- 测验成绩单模态框 -->
+    <div id="report-modal" class="modal-overlay hidden">
+        <div class="modal report-modal">
+            <div class="modal-header">
+                <h3>📊 测验成绩单</h3>
+                <button class="btn btn-icon" id="btn-report-close" title="关闭成绩单">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body report-body">
+                <!-- 汇总统计 -->
+                <div class="report-summary" id="report-summary"></div>
+
+                <!-- 正确率趋势 -->
+                <div class="report-section">
+                    <h4 class="report-section-title">📈 正确率趋势</h4>
+                    <div class="report-trend" id="report-trend"></div>
+                </div>
+
+                <!-- 知识点正确率 -->
+                <div class="report-section">
+                    <h4 class="report-section-title">📚 按知识点统计</h4>
+                    <div class="report-knowledge" id="report-knowledge"></div>
+                </div>
+
+                <!-- 历史记录：检索 + 筛选 + 排序 -->
+                <div class="report-section">
+                    <div class="report-history-head">
+                        <h4 class="report-section-title">🧾 答题历史</h4>
+                        <div class="report-controls">
+                            <input type="search" class="form-input report-search" id="report-search"
+                                   placeholder="按题目 / 知识点检索">
+                            <select class="param-select report-sort" id="report-sort">
+                                <option value="desc">时间：最新优先</option>
+                                <option value="asc">时间：最早优先</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="report-filters" id="report-filters"></div>
+                    <div class="report-list" id="report-list"></div>
+                    <div class="report-empty panel-empty hidden" id="report-empty"></div>
+                </div>
+            </div>
+            <div class="modal-footer report-footer">
+                <button class="btn btn-text btn-danger-text" id="btn-report-clear">清空记录</button>
+                <div class="report-footer-right">
+                    <button class="btn btn-secondary" id="btn-report-redo">重做错题</button>
+                    <button class="btn btn-primary" id="btn-report-done">完成</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 成绩单单条详情模态框 -->
+    <div id="report-detail-modal" class="modal-overlay hidden">
+        <div class="modal report-detail-modal">
+            <div class="modal-header">
+                <h3 id="report-detail-title">答题详情</h3>
+                <button class="btn btn-icon" id="btn-report-detail-close" title="返回成绩单">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body" id="report-detail-body"></div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btn-report-detail-back">返回成绩单</button>
+                <button class="btn btn-primary hidden" id="btn-report-detail-redo">重做这道题</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 欢迎引导遮罩 -->
     <div id="guide-overlay" class="guide-overlay hidden">
         <div class="guide-modal">
@@ -166,6 +242,15 @@
                 <h1 class="app-title">光学设计实验室</h1>
             </div>
             <div class="header-right">
+                <button class="btn btn-tool" id="btn-quiz-report" title="查看测验成绩单">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="8" y1="13" x2="16" y2="13"/>
+                        <line x1="8" y1="17" x2="13" y2="17"/>
+                    </svg>
+                    <span>成绩单</span>
+                </button>
                 <button class="btn btn-tool" id="btn-quiz-mode" title="光学测验模式">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M12 2L2 7l10 5 10-5-10-5z"/>
@@ -362,6 +447,7 @@
     <script src="js/renderer.js"></script>
     <script src="js/canvas.js"></script>
     <script src="js/quiz.js"></script>
+    <script src="js/report.js"></script>
     <script src="js/interaction.js"></script>
     <script src="js/guide.js"></script>
     <script src="js/app.js"></script>

@@ -189,5 +189,14 @@ const Utils = {
      */
     deepClone(obj) {
         return JSON.parse(JSON.stringify(obj));
+    },
+
+    /**
+     * 转义 HTML，防止拼接的用户/题库内容破坏页面结构
+     */
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text == null ? '' : String(text);
+        return div.innerHTML;
     }
 };

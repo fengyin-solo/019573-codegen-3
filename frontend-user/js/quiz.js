@@ -15,69 +15,116 @@ class QuizManager {
         this.currentQuestion = null;
         this.questionHistory = [];
         this.score = 0;
-        this.totalQuestions = 0;
+        this.totalQuestions = 0;       // 已作答（不含跳过）
+        this.correctCount = 0;
+        this.skippedCount = 0;
         this.hintUsed = false;
+        this.lastHint = null;
         this.isQuizMode = false;
         this.answeredQuestions = new Set();
+        this.questionPool = [];        // 本轮测验的题目池（题目对象）
+        this.currentSessionId = null;  // 当前测验轮次 id
+        this.sessionSource = 'normal'; // normal：正常一轮；redo：重做错题
     }
-    
+
     /**
      * 开启测验模式
+     * @param {Object} options
+     * @param {string[]} options.questionIds 自定义题目池（如重做错题），默认全部题目
+     * @param {string} options.source 轮次来源
      */
-    startQuizMode() {
+    startQuizMode(options = {}) {
+        const allQuestions = CONFIG.QUIZ_QUESTIONS;
+        let pool = allQuestions;
+
+        if (Array.isArray(options.questionIds) && options.questionIds.length > 0) {
+            pool = options.questionIds
+                .map(id => allQuestions.find(q => q.id === id))
+                .filter(q => q);
+            // 兜底：题目被删除等异常情况下回退到全部题目
+            if (pool.length === 0) pool = allQuestions;
+        }
+
         this.isQuizMode = true;
         this.score = 0;
         this.totalQuestions = 0;
+        this.correctCount = 0;
+        this.skippedCount = 0;
         this.answeredQuestions.clear();
+        this.questionPool = pool;
+        this.sessionSource = options.source || 'normal';
+
+        // 登记一轮新的测验
+        this.currentSessionId = ReportStore.startSession(this.sessionSource);
+
         this.nextQuestion();
     }
-    
+
     /**
      * 关闭测验模式
      */
     stopQuizMode() {
+        if (!this.isQuizMode) return;
+
+        // 结束当前测验轮次，成绩单随之落盘
+        if (this.currentSessionId) {
+            ReportStore.endSession(this.currentSessionId);
+        }
+
         this.isQuizMode = false;
         this.currentQuestion = null;
         this.hintUsed = false;
+        this.lastHint = null;
+        this.currentSessionId = null;
         window.dispatchEvent(new CustomEvent('quizStopped'));
     }
-    
+
     /**
      * 获取下一道随机题目
+     * 重做模式下题目全部答完时返回 null 并派发 quizPoolComplete 事件
      */
     nextQuestion() {
-        const questions = CONFIG.QUIZ_QUESTIONS;
-        let availableQuestions = questions.filter(q => !this.answeredQuestions.has(q.id));
-        
+        let availableQuestions = this.questionPool.filter(
+            q => !this.answeredQuestions.has(q.id)
+        );
+
         if (availableQuestions.length === 0) {
+            if (this.sessionSource === 'redo') {
+                this.currentQuestion = null;
+                window.dispatchEvent(new CustomEvent('quizPoolComplete'));
+                return null;
+            }
+            // 正常模式答完一轮后打乱再来一遍
             this.answeredQuestions.clear();
-            availableQuestions = questions;
+            availableQuestions = this.questionPool;
         }
-        
+
         const randomIndex = Math.floor(Math.random() * availableQuestions.length);
         this.currentQuestion = availableQuestions[randomIndex];
         this.hintUsed = false;
-        
+        this.lastHint = null;
+
         this.answeredQuestions.add(this.currentQuestion.id);
-        
+
         window.dispatchEvent(new CustomEvent('questionChanged', {
             detail: this.currentQuestion
         }));
-        
+
         return this.currentQuestion;
     }
-    
+
     /**
      * 获取提示
      */
     getHint() {
         if (!this.currentQuestion) return null;
-        
+
         this.hintUsed = true;
         const hints = this.currentQuestion.hints;
         const randomIndex = Math.floor(Math.random() * hints.length);
-        
-        return hints[randomIndex];
+        this.lastHint = hints[randomIndex];
+
+        return this.lastHint;
     }
     
     /**
@@ -306,20 +353,37 @@ class QuizManager {
         if (isCorrect) {
             earnedScore = this.hintUsed ? 5 : 10;
             this.score += earnedScore;
+            this.correctCount++;
         }
         this.totalQuestions++;
-        
+
         const explanation = question.explanation[explanationKey] || question.explanation.correct;
-        
-        this.questionHistory.push({
+
+        // 记录详细答题历史（持久化到成绩单）
+        const record = {
+            id: Utils.generateId(),
+            sessionId: this.currentSessionId,
             questionId: question.id,
             title: question.title,
+            knowledgePoint: question.knowledgePoint || '综合应用',
+            description: question.description,
+            status: isCorrect ? 'correct' : 'wrong',
             isCorrect: isCorrect,
             score: earnedScore,
             hintUsed: this.hintUsed,
-            timestamp: Date.now()
-        });
-        
+            hint: this.hintUsed ? this.lastHint : null,
+            skipped: false,
+            timestamp: Date.now(),
+            params: this.snapshotLensParams(lens),
+            lightMode: lightMode,
+            incidentAngle: Math.round(this.renderer.incidentAngle * 10) / 10,
+            details: results,
+            explanation: explanation,
+            solution: question.explanation.correct
+        };
+        this.questionHistory.push(record);
+        ReportStore.addRecord(record);
+
         return {
             isCorrect: isCorrect,
             score: earnedScore,
@@ -328,6 +392,64 @@ class QuizManager {
             explanation: explanation,
             details: results,
             hintUsed: this.hintUsed
+        };
+    }
+
+    /**
+     * 跳过当前题目（跳过的题不计分，单独统计）
+     */
+    skipQuestion() {
+        if (!this.currentQuestion) return null;
+
+        const question = this.currentQuestion;
+        const lens = this.canvasManager.lenses[0] || null;
+
+        const record = {
+            id: Utils.generateId(),
+            sessionId: this.currentSessionId,
+            questionId: question.id,
+            title: question.title,
+            knowledgePoint: question.knowledgePoint || '综合应用',
+            description: question.description,
+            status: 'skipped',
+            isCorrect: false,
+            score: 0,
+            hintUsed: this.hintUsed,
+            hint: this.hintUsed ? this.lastHint : null,
+            skipped: true,
+            timestamp: Date.now(),
+            params: lens ? this.snapshotLensParams(lens) : null,
+            lightMode: this.renderer.lightMode,
+            incidentAngle: Math.round(this.renderer.incidentAngle * 10) / 10,
+            details: [],
+            explanation: '本题已跳过，没有计入正确率。',
+            solution: question.explanation.correct
+        };
+
+        this.questionHistory.push(record);
+        this.skippedCount++;
+        ReportStore.addRecord(record);
+
+        return record;
+    }
+
+    /**
+     * 快照当前透镜与光源参数，便于成绩单中回看“当时的参数”
+     */
+    snapshotLensParams(lens) {
+        return {
+            type: lens.type,
+            typeName: lens.getTypeName(),
+            material: lens.material,
+            materialName: lens.getMaterialName(),
+            refractiveIndex: Math.round(lens.refractiveIndex * 100) / 100,
+            curvature: lens.curvature,
+            size: lens.size,
+            dispersion: lens.dispersion,
+            focalLength: (() => {
+                const f = lens.getFocalLength();
+                return Math.abs(f) === Infinity ? null : Math.round(f);
+            })()
         };
     }
     
@@ -472,14 +594,16 @@ class QuizManager {
     }
     
     /**
-     * 获取当前得分
+     * 获取当前轮次得分（跳过的题不计入正确率）
      */
     getScore() {
         return {
             score: this.score,
             totalQuestions: this.totalQuestions,
-            accuracy: this.totalQuestions > 0 
-                ? Math.round((this.questionHistory.filter(q => q.isCorrect).length / this.totalQuestions) * 100)
+            correctCount: this.correctCount,
+            skippedCount: this.skippedCount,
+            accuracy: this.totalQuestions > 0
+                ? Math.round((this.correctCount / this.totalQuestions) * 100)
                 : 0
         };
     }

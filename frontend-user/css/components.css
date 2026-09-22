@@ -1081,3 +1081,507 @@
         width: 100%;
     }
 }
+
+/* ===================== 测验成绩单 ===================== */
+.report-modal {
+    max-width: 640px;
+    max-height: 86vh;
+}
+
+.report-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+/* 汇总统计卡片 */
+.report-summary {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: var(--spacing-sm);
+}
+
+.report-stat-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: var(--spacing-sm) var(--spacing-xs);
+    background-color: var(--color-bg-input);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-md);
+}
+
+.report-stat-value {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-primary);
+    font-family: "Courier New", monospace;
+}
+
+.report-stat-label {
+    font-size: 11px;
+    color: var(--color-text-secondary);
+}
+
+.report-stat-card.correct .report-stat-value { color: var(--color-success); }
+.report-stat-card.wrong .report-stat-value { color: var(--color-error); }
+.report-stat-card.skipped .report-stat-value { color: var(--color-text-hint); }
+
+/* 分区 */
+.report-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.report-section-title {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
+}
+
+.report-section-empty {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-hint);
+    padding: var(--spacing-sm) 0;
+}
+
+/* 趋势图 */
+.report-trend {
+    background-color: var(--color-bg-input);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-sm);
+}
+
+.trend-svg {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.trend-grid-line {
+    stroke: var(--color-border);
+    stroke-width: 1;
+    stroke-dasharray: 4 4;
+}
+
+.trend-axis-label {
+    font-size: 10px;
+    fill: var(--color-text-hint);
+}
+
+.trend-line {
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 2;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+}
+
+.trend-point {
+    fill: var(--color-primary);
+    stroke: var(--color-bg-card);
+    stroke-width: 2;
+}
+
+.trend-caption {
+    text-align: center;
+    font-size: 11px;
+    color: var(--color-text-hint);
+    margin-top: 2px;
+}
+
+.report-chart-empty {
+    text-align: center;
+    padding: var(--spacing-md);
+    color: var(--color-text-hint);
+}
+
+.report-chart-empty-icon {
+    font-size: 28px;
+}
+
+.report-chart-empty p {
+    font-size: var(--font-size-xs);
+    margin-top: var(--spacing-xs);
+}
+
+/* 知识点统计 */
+.kp-row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--spacing-xs) 0;
+}
+
+.kp-row-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.kp-name {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+    font-weight: var(--font-weight-medium);
+}
+
+.kp-acc {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-primary);
+    font-family: "Courier New", monospace;
+}
+
+.kp-bar-track {
+    height: 8px;
+    background-color: var(--color-bg-input);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+}
+
+.kp-bar-fill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    transition: width var(--transition-normal);
+}
+
+.kp-bar-fill.good { background-color: var(--color-success); }
+.kp-bar-fill.medium { background-color: var(--color-warning); }
+.kp-bar-fill.bad { background-color: var(--color-error); }
+.kp-bar-fill.skipped { background-color: var(--color-text-hint); }
+
+.kp-row-meta {
+    font-size: 11px;
+    color: var(--color-text-hint);
+}
+
+/* 检索与排序 */
+.report-history-head {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.report-controls {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.report-search {
+    flex: 1;
+    min-height: 36px;
+}
+
+.report-sort {
+    width: auto;
+    min-width: 132px;
+}
+
+/* 状态筛选标签 */
+.report-filters {
+    display: flex;
+    gap: var(--spacing-xs);
+    flex-wrap: wrap;
+}
+
+.report-filter-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--font-size-xs);
+    background-color: var(--color-bg-input);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    color: var(--color-text-secondary);
+    min-height: 32px;
+    transition: all var(--transition-fast);
+}
+
+.report-filter-tab:hover {
+    border-color: var(--color-primary);
+}
+
+.report-filter-tab.active {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+    color: var(--color-text-inverse);
+}
+
+.report-filter-count {
+    font-family: "Courier New", monospace;
+    font-weight: var(--font-weight-bold);
+}
+
+/* 记录列表 */
+.report-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.report-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background-color: var(--color-bg-input);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.report-item:hover,
+.report-item:focus {
+    border-color: var(--color-primary);
+    background-color: var(--color-primary-light);
+    outline: none;
+}
+
+.report-item-main {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.report-item-title {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-primary);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    flex-wrap: wrap;
+}
+
+.report-item-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-size: 11px;
+    color: var(--color-text-hint);
+    flex-wrap: wrap;
+}
+
+.report-item-score {
+    font-family: "Courier New", monospace;
+}
+
+.report-item-date {
+    color: var(--color-text-hint);
+}
+
+.report-item-arrow {
+    font-size: 20px;
+    color: var(--color-text-hint);
+    flex-shrink: 0;
+}
+
+.report-kp-tag {
+    display: inline-block;
+    padding: 1px 8px;
+    font-size: 10px;
+    font-weight: var(--font-weight-normal);
+    background-color: var(--color-primary-light);
+    color: var(--color-primary);
+    border-radius: var(--radius-full);
+}
+
+/* 状态徽标 */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 8px;
+    border-radius: var(--radius-full);
+    font-size: 11px;
+    font-weight: var(--font-weight-medium);
+}
+
+.status-badge.correct {
+    background-color: rgba(74, 93, 35, 0.12);
+    color: var(--color-success);
+}
+
+.status-badge.wrong {
+    background-color: rgba(120, 63, 39, 0.12);
+    color: var(--color-error);
+}
+
+.status-badge.skipped {
+    background-color: var(--color-bg-hover);
+    color: var(--color-text-hint);
+}
+
+.hint-badge {
+    color: var(--color-warning);
+}
+
+/* 空态 */
+.report-empty-title {
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-primary);
+    margin-top: var(--spacing-sm);
+}
+
+.report-empty-desc {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+    max-width: 320px;
+}
+
+.report-filter-empty {
+    text-align: center;
+    padding: var(--spacing-lg);
+    color: var(--color-text-hint);
+    font-size: var(--font-size-sm);
+}
+
+.report-filter-empty .empty-icon {
+    font-size: 28px;
+}
+
+/* 底部操作 */
+.report-footer {
+    justify-content: space-between;
+    align-items: center;
+}
+
+.report-footer-right {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.btn-danger-text {
+    color: var(--color-error);
+}
+
+.btn-danger-text:hover {
+    color: var(--color-error);
+    text-decoration: underline;
+}
+
+/* 详情弹窗 */
+.report-detail-modal {
+    max-width: 560px;
+    max-height: 86vh;
+}
+
+.detail-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-sm);
+}
+
+.detail-kp {
+    font-size: var(--font-size-xs);
+    color: var(--color-primary);
+    font-weight: var(--font-weight-medium);
+    margin-bottom: var(--spacing-xs);
+}
+
+.detail-desc {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+    margin-bottom: var(--spacing-md);
+}
+
+.detail-subhead {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
+    margin: var(--spacing-md) 0 var(--spacing-xs);
+}
+
+.detail-box {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+    line-height: 1.6;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background-color: var(--color-bg-input);
+    border-radius: var(--radius-md);
+}
+
+.detail-explanation {
+    border-left: 3px solid var(--color-warning);
+}
+
+.detail-solution {
+    border-left: 3px solid var(--color-success);
+}
+
+.param-empty {
+    color: var(--color-text-hint);
+    font-size: var(--font-size-xs);
+}
+
+.param-snapshot-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-xs) var(--spacing-md);
+}
+
+.param-snapshot-item {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
+    font-size: var(--font-size-xs);
+}
+
+.param-snapshot-key {
+    color: var(--color-text-secondary);
+}
+
+.param-snapshot-val {
+    color: var(--color-text-primary);
+    font-weight: var(--font-weight-medium);
+    font-family: "Courier New", monospace;
+}
+
+/* 成绩单响应式 */
+@media (max-width: 768px) {
+    .report-summary {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .report-modal,
+    .report-detail-modal {
+        max-width: 100%;
+    }
+
+    .report-controls {
+        flex-direction: column;
+    }
+
+    .report-sort {
+        width: 100%;
+    }
+
+    .report-footer {
+        flex-direction: column-reverse;
+        align-items: stretch;
+        gap: var(--spacing-sm);
+    }
+
+    .report-footer-right {
+        justify-content: stretch;
+    }
+
+    .report-footer-right .btn {
+        flex: 1;
+    }
+
+    .param-snapshot-grid {
+        grid-template-columns: 1fr;
+    }
+}
